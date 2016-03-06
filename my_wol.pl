@@ -108,6 +108,9 @@ compare_board_states(bloodlust_lookahead, PlayerColour, MoveA, MoveABoardState, 
 compare_board_states(self_preservation_lookahead, PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove) :-
   self_preservation_lookahead(PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove).
 
+compare_board_states(land_grab_lookahead, PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove) :-
+  land_grab_lookahead(PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove).
+
 % Returns new board state after move but before Conway's crank
 return_new_board('b', [AliveBlues, AliveReds], Move, [NewAliveBlues, AliveReds]) :-
   alter_board(Move, AliveBlues, NewAliveBlues).
@@ -150,3 +153,27 @@ self_preservation_lookahead('b', MoveA, [BlueA, _], MoveB, [BlueB, _], BestMove)
   length(BlueA, NumBluesA),
   length(BlueB, NumBluesB),
   NumBluesA > NumBluesB -> BestMove = MoveA ; BestMove = MoveB.
+
+% Returns the move and board state which after Conway's crank, maximises the function
+% 'Number of Player's pieces - Number of Opponent's pieces'
+
+land_grab(PlayerColour, CurrentBoardState, NewBoardState, Move) :-
+  get_all_moves(PlayerColour, CurrentBoardState, PossMoves),
+  run_strategy_lookahead(self_preservation_lookahead, PlayerColour, CurrentBoardState, PossMoves, Move),
+  return_new_board(PlayerColour, CurrentBoardState, Move, NewBoardState).
+
+land_grab_lookahead(PlayerColour, MoveA, [AliveBlueA, AliveRedA], MoveB, [AliveBlueB, AliveRedB], BestMove) :-
+  length(AliveRedA, NumRedsA),
+  length(AliveRedB, NumRedsB),
+  length(AliveBlueA, NumBluesA),
+  length(AliveBlueB, NumBluesB),
+  land_grab_max_func(PlayerColour, NumBluesA, NumRedsA, NumBluesB, NumRedsB, DiffA, DiffB),
+  DiffA >= DiffB -> BestMove = MoveA ; BestMove = MoveB.
+
+land_grab_max_func('b', NumBluesA, NumRedsA, NumBluesB, NumRedsB, DiffA, DiffB) :-
+  DiffA is NumBluesA - NumRedsA,
+  DiffB is NumBluesB - NumRedsB.
+
+land_grab_max_func('r', NumBluesA, NumRedsA, NumBluesB, NumRedsB, DiffA, DiffB) :-
+  DiffA is NumRedsA - NumBluesA,
+  DiffB is NumRedsB - NumBluesB.
