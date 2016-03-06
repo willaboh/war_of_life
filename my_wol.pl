@@ -105,6 +105,9 @@ try_move(PlayerColour, CurrentBoardState, Move, NewBoardState) :-
 compare_board_states(bloodlust_lookahead, PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove) :-
   bloodlust_lookahead(PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove).
 
+compare_board_states(self_preservation_lookahead, PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove) :-
+  self_preservation_lookahead(PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove).
+
 % Returns new board state after move but before Conway's crank
 return_new_board('b', [AliveBlues, AliveReds], Move, [NewAliveBlues, AliveReds]) :-
   alter_board(Move, AliveBlues, NewAliveBlues).
