@@ -22,8 +22,8 @@ test_strategy(N, FirstPlayerStrategy, SecondPlayerStrategy) :-
   format('Longest Moves: ~w ~N', [MaxMove]),
   format('Shortest Moves: ~w ~N', [MinMove]),
   format('Average Moves: ~w ~N', [AvgMove]),
-  format('Average Runtime: ~w ~N', [AvgRuntime]),
-  halt.
+  format('Average Runtime: ~w ~N', [AvgRuntime]).
+  %halt.
 
 % Runs the game N times adding statistics to the Results, Moves and Runtimes Lists
 run_games(0, _, _, [], [], []).
@@ -72,3 +72,62 @@ add_all([], 0).
 add_all([P|L], Total) :-
   add_all(L, LTotal),
   Total is P + LTotal.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Helper functions for strategies
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+get_all_moves(PlayerColour, [AliveBlues, AliveReds], PossMoves) :-
+  PlayerColour == 'b' -> AliveCells = AliveBlues ; AliveCells = AliveReds,
+  findall([A, B, MA, MB],
+            (member([A, B], AliveCells),
+            neighbour_position(A, B, [MA, MB]),
+            \+member([MA, MB], AliveBlues),
+            \+member([MA, MB], AliveReds)),
+          PossMoves),
+  !.
+
+% Picks the best move according to the strategy lookahead function provided
+% run_strategy_lookahead/5
+% run_strategy_lookahead(+StrategyLookahead, +PlayerColour, +CurrentBoardState, +PossibleMoves, -BestMove)
+run_strategy_lookahead(_, _, _, [Move], Move).
+
+run_strategy_lookahead(StrategyLookahead, PlayerColour, CurrentBoardState, [MoveA, MoveB | Moves], FinalMove) :-
+  try_move(PlayerColour, CurrentBoardState, MoveA, MoveABoardState),
+  try_move(PlayerColour, CurrentBoardState, MoveB, MoveBBoardState),
+  compare_board_states(StrategyLookahead, PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove),
+  run_strategy_lookahead(StrategyLookahead, PlayerColour, CurrentBoardState, [BestMove | Moves], FinalMove).
+
+try_move(PlayerColour, CurrentBoardState, Move, NewBoardState) :-
+  return_new_board(PlayerColour, CurrentBoardState, Move, PreCrankedBoard),
+  next_generation(PreCrankedBoard, NewBoardState).
+
+compare_board_states(bloodlust_lookahead, PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove) :-
+  bloodlust_lookahead(PlayerColour, MoveA, MoveABoardState, MoveB, MoveBBoardState, BestMove).
+
+% Returns new board state after move but before Conway's crank
+return_new_board('b', [AliveBlues, AliveReds], Move, [NewAliveBlues, AliveReds]) :-
+  alter_board(Move, AliveBlues, NewAliveBlues).
+
+return_new_board('r', [AliveBlues, AliveReds], Move, [AliveBlues, NewAliveReds]) :-
+  alter_board(Move, AliveReds, NewAliveReds).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Strategies
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Returns the move and board state which results in the fewest number of opponent's pieces after Conway's crank
+bloodlust(PlayerColour, CurrentBoardState, NewBoardState, Move) :-
+  get_all_moves(PlayerColour, CurrentBoardState, PossMoves),
+  run_strategy_lookahead(bloodlust_lookahead, PlayerColour, CurrentBoardState, PossMoves, Move),
+  return_new_board(PlayerColour, CurrentBoardState, Move, NewBoardState).
+
+bloodlust_lookahead('b', MoveA, [_, RedA], MoveB, [_, RedB], BestMove) :-
+  length(RedA, NumRedsA),
+  length(RedB, NumRedsB),
+  NumRedsA < NumRedsB -> BestMove = MoveA ; BestMove = MoveB.
+
+bloodlust_lookahead('r', MoveA, [BlueA, _], MoveB, [BlueB, _], BestMove) :-
+  length(BlueA, NumBluesA),
+  length(BlueB, NumBluesB),
+  NumBluesA < NumBluesB -> BestMove = MoveA ; BestMove = MoveB.
