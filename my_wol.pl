@@ -131,3 +131,19 @@ bloodlust_lookahead('r', MoveA, [BlueA, _], MoveB, [BlueB, _], BestMove) :-
   length(BlueA, NumBluesA),
   length(BlueB, NumBluesB),
   NumBluesA < NumBluesB -> BestMove = MoveA ; BestMove = MoveB.
+
+% Returns the move and board state which results in the largest number of this player's pieces after Conway's crank
+self_preservation(PlayerColour, CurrentBoardState, NewBoardState, Move) :-
+  get_all_moves(PlayerColour, CurrentBoardState, PossMoves),
+  run_strategy_lookahead(self_preservation_lookahead, PlayerColour, CurrentBoardState, PossMoves, Move),
+  return_new_board(PlayerColour, CurrentBoardState, Move, NewBoardState).
+
+self_preservation_lookahead('r', MoveA, [_, RedA], MoveB, [_, RedB], BestMove) :-
+  length(RedA, NumRedsA),
+  length(RedB, NumRedsB),
+  NumRedsA > NumRedsB -> BestMove = MoveA ; BestMove = MoveB.
+
+self_preservation_lookahead('b', MoveA, [BlueA, _], MoveB, [BlueB, _], BestMove) :-
+  length(BlueA, NumBluesA),
+  length(BlueB, NumBluesB),
+  NumBluesA > NumBluesB -> BestMove = MoveA ; BestMove = MoveB.
