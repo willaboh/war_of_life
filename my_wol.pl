@@ -36,7 +36,7 @@ run_games(N, FirstPlayerStrategy, SecondPlayerStrategy, [Result | Results], [Gam
   statistics(runtime, [T1|_]),
   Runtime is T1 - T0,
   NewN is N - 1,
-  run_games(NewN, FirstplayerStrategy, SecondPlayerStrategy, Results, Moves, Runtimes).
+  run_games(NewN, FirstPlayerStrategy, SecondPlayerStrategy, Results, Moves, Runtimes).
 
 % Sums up the number of first argument elements in the list provided in the second argument
 sum(_, [], 0) :- !.
@@ -75,10 +75,12 @@ add_all(List, Total) :-
 get_all_moves(PlayerColour, [AliveBlues, AliveReds], PossMoves) :-
   PlayerColour == 'b' -> AliveCells = AliveBlues ; AliveCells = AliveReds,
   findall([A, B, MA, MB],
-            (member([A, B], AliveCells),
+          (
+            member([A, B], AliveCells),
             neighbour_position(A, B, [MA, MB]),
-            \+member([MA, MB], AliveBlues),
-            \+member([MA, MB], AliveReds)),
+            \+ member([MA, MB], AliveBlues),
+            \+ member([MA, MB], AliveReds)
+          ),
           PossMoves),
   !.
 
@@ -112,6 +114,10 @@ return_new_board('b', [AliveBlues, AliveReds], Move, [NewAliveBlues, AliveReds])
 
 return_new_board('r', [AliveBlues, AliveReds], Move, [AliveBlues, NewAliveReds]) :-
   alter_board(Move, AliveReds, NewAliveReds).
+
+% Returns the colour of this player's opponent
+opponent_colour('b', 'r').
+opponent_colour('r', 'b').
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Strategies
@@ -154,7 +160,7 @@ self_preservation_lookahead('b', MoveA, [BlueA, _], MoveB, [BlueB, _], BestMove)
 
 land_grab(PlayerColour, CurrentBoardState, NewBoardState, Move) :-
   get_all_moves(PlayerColour, CurrentBoardState, PossMoves),
-  run_strategy_lookahead(self_preservation_lookahead, PlayerColour, CurrentBoardState, PossMoves, Move),
+  run_strategy_lookahead(land_grab_lookahead, PlayerColour, CurrentBoardState, PossMoves, Move),
   return_new_board(PlayerColour, CurrentBoardState, Move, NewBoardState).
 
 land_grab_lookahead(PlayerColour, MoveA, [AliveBlueA, AliveRedA], MoveB, [AliveBlueB, AliveRedB], BestMove) :-
@@ -172,3 +178,39 @@ land_grab_max_func('b', NumBluesA, NumRedsA, NumBluesB, NumRedsB, DiffA, DiffB) 
 land_grab_max_func('r', NumBluesA, NumRedsA, NumBluesB, NumRedsB, DiffA, DiffB) :-
   DiffA is NumRedsA - NumBluesA,
   DiffB is NumRedsB - NumBluesB.
+
+% Returns the best move and board after utilising the minimax principle on the land grab heuristic
+minimax(PlayerColour, CurrentBoardState, NewBoardState, Move) :-
+  get_all_moves(PlayerColour, CurrentBoardState, PossMoves),
+  find_best_move(PlayerColour, CurrentBoardState, PossMoves, Move),
+  return_new_board(PlayerColour, CurrentBoardState, Move, NewBoardState).
+
+score_board(PlayerColour, [AliveBlues, AliveReds], Score) :-
+  length(AliveBlues, BL),
+  length(AliveReds, RL),
+  score(PlayerColour, BL, RL, Score).
+
+score('b', BL, RL, Score) :-
+  Score is BL - RL.
+
+score('r', BL, RL, Score) :-
+  Score is RL - BL.
+
+find_best_move(_, _, [Move], Move).
+
+find_best_move(PlayerColour, CurrentBoardState, [MoveA, MoveB | Moves], BestMove) :-
+  opponent_colour(PlayerColour, OpponentColour),
+  try_move(PlayerColour, CurrentBoardState, MoveA, MoveABoard),
+  try_move(PlayerColour, CurrentBoardState, MoveB, MoveBBoard),
+  get_all_moves(OpponentColour, MoveABoard, OppMoveAMoves),
+  get_all_moves(OpponentColour, MoveBBoard, OppMoveBMoves),
+  run_strategy_lookahead(land_grab_lookahead, OpponentColour, MoveABoard, OppMoveAMoves, BestOppAMove),
+  run_strategy_lookahead(land_grab_lookahead, OpponentColour, MoveBBoard, OppMoveBMoves, BestOppBMove),
+  try_move(OpponentColour, MoveABoard, BestOppAMove, BestOppAMoveBoard),
+  try_move(OpponentColour, MoveBBoard, BestOppBMove, BestOppBMoveBoard),
+  score_board(PlayerColour, BestOppAMoveBoard, ScoreA),
+  score_board(PlayerColour, BestOppBMoveBoard, ScoreB),
+  ScoreA > ScoreB ->
+    find_best_move(PlayerColour, CurrentBoardState, [MoveA | Moves], BestMove)
+    ;
+    find_best_move(PlayerColour, CurrentBoardState, [MoveB | Moves], BestMove).
