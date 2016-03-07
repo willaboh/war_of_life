@@ -11,7 +11,8 @@ test_strategy(N, FirstPlayerStrategy, SecondPlayerStrategy) :-
   sum(r, Results, SecondPlayerWins),
   sum(draw, Results, DrawNum),
   sum(stalemate, Results, StalemateNum),
-  DrawTotal is DrawNum + StalemateNum,
+  sum(exhaust, Results, ExhaustNum),
+  DrawTotal is DrawNum + StalemateNum + ExhaustNum,
   longest(Moves, MaxMove),
   shortest(Moves, MinMove),
   average(Moves, AvgMove),
@@ -49,16 +50,13 @@ sum(P, [Q|L], N) :-
   sum(P, L, N).
 
 % Returns the maximum value in the list
-longest([P], P).
-
-longest([P, Q|L], Max) :-
-  P > Q -> longest([P|L], Max) ; longest([Q|L], Max).
+longest(Moves, Max) :-
+  max_member(Max, Moves),
+  Max < 250.
 
 % Returns the minimum value in the list
-shortest([P], P).
-
-shortest([P, Q|L], Min) :-
-  P < Q -> shortest([P|L], Min) ; shortest([Q|L], Min).
+shortest(Moves, Min) :-
+  min_member(Min, Moves).
 
 % Calculates the average of all values in the list
 average(Values, Avg) :-
@@ -67,11 +65,8 @@ average(Values, Avg) :-
   Avg is Total / Length.
 
 % Sums up the values in a list
-add_all([], 0).
-
-add_all([P|L], Total) :-
-  add_all(L, LTotal),
-  Total is P + LTotal.
+add_all(List, Total) :-
+  sumlist(List, Total).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Helper functions for strategies
